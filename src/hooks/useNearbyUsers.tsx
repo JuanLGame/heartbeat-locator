@@ -1,6 +1,9 @@
 
 import { useState, useEffect } from 'react';
 import { User } from '../types/types';
+import { supabase } from '../integrations/supabase/client';
+import { useAuth } from './useAuth';
+import { toast } from 'sonner';
 
 // Haversine formula to calculate distance between two points
 function calculateDistance(
@@ -23,54 +26,6 @@ function calculateDistance(
   return R * c; // Distance in meters
 }
 
-// Mock users for demo
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'María',
-    profilePicture: 'https://randomuser.me/api/portraits/women/44.jpg',
-    location: {
-      latitude: 0,
-      longitude: 0
-    }
-  },
-  {
-    id: '2',
-    name: 'Carlos',
-    profilePicture: 'https://randomuser.me/api/portraits/men/32.jpg',
-    location: {
-      latitude: 0,
-      longitude: 0
-    }
-  },
-  {
-    id: '3',
-    name: 'Ana',
-    profilePicture: 'https://randomuser.me/api/portraits/women/68.jpg',
-    location: {
-      latitude: 0,
-      longitude: 0
-    }
-  },
-  {
-    id: '4',
-    name: 'Jorge',
-    location: {
-      latitude: 0,
-      longitude: 0
-    }
-  },
-  {
-    id: '5',
-    name: 'Lucía',
-    profilePicture: 'https://randomuser.me/api/portraits/women/65.jpg',
-    location: {
-      latitude: 0,
-      longitude: 0
-    }
-  }
-];
-
 interface UseNearbyUsersParams {
   latitude: number | null;
   longitude: number | null;
@@ -80,56 +35,118 @@ interface UseNearbyUsersResult {
   users: User[];
   distances: Record<string, number>;
   loading: boolean;
+  error: Error | null;
+  updateUserLocation: (lat: number, lng: number) => Promise<void>;
 }
 
 export function useNearbyUsers({ 
   latitude, 
   longitude 
 }: UseNearbyUsersParams): UseNearbyUsersResult {
+  const [users, setUsers] = useState<User[]>([]);
   const [distances, setDistances] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const { user } = useAuth();
   
+  // Update user's location in the database
+  const updateUserLocation = async (lat: number, lng: number) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase.functions.invoke(
+        'update-location',
+        {
+          body: {
+            userId: user.id,
+            latitude: lat,
+            longitude: lng
+          }
+        }
+      );
+      
+      if (error) {
+        console.error('Error updating location:', error);
+        throw new Error('Failed to update location');
+      }
+    } catch (err) {
+      console.error('Failed to invoke function:', err);
+      toast.error('Error al actualizar ubicación');
+    }
+  };
+  
+  // Fetch nearby users
   useEffect(() => {
-    if (latitude === null || longitude === null) {
+    if (!user || latitude === null || longitude === null) {
+      setLoading(false);
       return;
     }
     
-    // In a real app, this would fetch users from Supabase with PostGIS
-    // For demo, we'll simulate random movements of the mock users
-    const timer = setInterval(() => {
-      // Update mock user locations to simulate movement
-      const updatedDistances: Record<string, number> = {};
+    const fetchNearbyUsers = async () => {
+      setLoading(true);
+      setError(null);
       
-      mockUsers.forEach(user => {
-        if (!user.location) return;
+      try {
+        // First update user's location
+        await updateUserLocation(latitude, longitude);
         
-        // Randomly update user location (small changes to simulate movement)
-        const latOffset = (Math.random() - 0.5) * 0.0001; // Small random change
-        const lonOffset = (Math.random() - 0.5) * 0.0001;
-        
-        user.location.latitude = latitude + latOffset * 20;
-        user.location.longitude = longitude + lonOffset * 20;
-        
-        // Calculate distance
-        const distance = calculateDistance(
-          latitude,
-          longitude,
-          user.location.latitude,
-          user.location.longitude
+        // Then fetch nearby users
+        const { data, error } = await supabase.functions.invoke(
+          'get-nearby-users',
+          {
+            body: {
+              userId: user.id,
+              latitude,
+              longitude,
+              maxDistance: 10 // 10 meters
+            }
+          }
         );
         
-        updatedDistances[user.id] = distance;
-      });
-      
-      setDistances(updatedDistances);
-      setLoading(false);
-    }, 3000);
+        if (error) {
+          console.error('Error fetching nearby users:', error);
+          setError(new Error('Failed to fetch nearby users'));
+          return;
+        }
+        
+        // Process users and calculate distances
+        if (data && Array.isArray(data)) {
+          setUsers(data as User[]);
+          
+          // Calculate distances
+          const newDistances: Record<string, number> = {};
+          data.forEach((nearbyUser: any) => {
+            if (nearbyUser.location && nearbyUser.location.latitude && nearbyUser.location.longitude) {
+              newDistances[nearbyUser.id] = calculateDistance(
+                latitude,
+                longitude,
+                nearbyUser.location.latitude,
+                nearbyUser.location.longitude
+              );
+            }
+          });
+          
+          setDistances(newDistances);
+        }
+      } catch (err) {
+        console.error('Error in nearby users hook:', err);
+        setError(err instanceof Error ? err : new Error('Unknown error'));
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    return () => clearInterval(timer);
-  }, [latitude, longitude]);
+    fetchNearbyUsers();
+    
+    // Set up an interval to periodically update
+    const intervalId = setInterval(() => {
+      fetchNearbyUsers();
+    }, 10000); // Every 10 seconds
+    
+    return () => clearInterval(intervalId);
+  }, [user, latitude, longitude]);
   
-  // Filter users by distance for UI display is done in the component
-  return { users: mockUsers, distances, loading };
+  return { users, distances, loading, error, updateUserLocation };
 }
 
 export default useNearbyUsers;

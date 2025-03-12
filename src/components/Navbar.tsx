@@ -1,65 +1,69 @@
 
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Heart, User, Settings } from 'lucide-react';
+import { Home, User, Settings, Bell } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
+  const { user, signOut } = useAuth();
   
-  const navItems = [
-    { icon: Heart, path: '/', label: 'Alarma' },
-    { icon: User, path: '/profile', label: 'Perfil' },
-    { icon: Settings, path: '/settings', label: 'Ajustes' }
-  ];
-
+  const isActive = (path: string) => location.pathname === path;
+  
   return (
-    <>
-      {/* Top header */}
-      <motion.header 
-        className="fixed top-0 left-0 right-0 z-50 glass-panel h-16 flex items-center justify-center max-w-md mx-auto"
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      >
-        <h1 className="text-xl font-semibold tracking-tight">Love Alarm</h1>
-      </motion.header>
-      
-      {/* Bottom navigation */}
-      <motion.nav 
-        className="fixed bottom-0 left-0 right-0 z-50 glass-panel h-16 max-w-md mx-auto"
+    <nav className="fixed bottom-0 left-0 right-0 z-10 p-4 pb-6">
+      <motion.div 
+        className="glass-panel mx-auto rounded-full max-w-md p-2 flex justify-around"
         initial={{ y: 100 }}
         animate={{ y: 0 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
       >
-        <div className="flex h-full items-center justify-around">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) => 
-                `flex flex-col items-center justify-center w-1/3 h-full transition-all duration-300 ${
-                  isActive ? 'text-primary' : 'text-muted-foreground'
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <item.icon className={`size-5 mb-1 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                  <span className={`text-xs ${isActive ? 'font-medium' : 'font-normal'}`}>{item.label}</span>
-                  {isActive && (
-                    <motion.div
-                      className="absolute bottom-0 w-10 h-1 bg-primary rounded-t-md"
-                      layoutId="activeTab"
-                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    />
-                  )}
-                </>
-              )}
+        <NavLink to="/" active={isActive('/')}>
+          <Home size={24} />
+        </NavLink>
+        
+        {user ? (
+          <>
+            <NavLink to="/profile" active={isActive('/profile')}>
+              <User size={24} />
             </NavLink>
-          ))}
-        </div>
-      </motion.nav>
-    </>
+            
+            <NavLink to="/settings" active={isActive('/settings')}>
+              <Settings size={24} />
+            </NavLink>
+          </>
+        ) : (
+          <NavLink to="/auth" active={isActive('/auth')}>
+            <Bell size={24} />
+          </NavLink>
+        )}
+      </motion.div>
+    </nav>
   );
 };
+
+interface NavLinkProps {
+  to: string;
+  active: boolean;
+  children: React.ReactNode;
+}
+
+const NavLink: React.FC<NavLinkProps> = ({ to, active, children }) => {
+  return (
+    <Link to={to} className="relative block p-2">
+      <div className={`transition-colors ${active ? 'text-alarm' : 'text-foreground/60'}`}>
+        {children}
+      </div>
+      {active && (
+        <motion.div
+          layoutId="navbar-indicator"
+          className="absolute bottom-0 left-0 right-0 mx-auto h-1 w-1/2 bg-alarm rounded-full"
+          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+        />
+      )}
+    </Link>
+  );
+};
+
+export default Navbar;

@@ -3,6 +3,15 @@ import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 
 interface GeolocationPosition {
+  coords: {
+    latitude: number;
+    longitude: number;
+    accuracy: number;
+  };
+  timestamp: number;
+}
+
+interface LocationPosition {
   latitude: number;
   longitude: number;
   accuracy: number;
@@ -10,13 +19,13 @@ interface GeolocationPosition {
 }
 
 interface UseGeolocationResult {
-  position: GeolocationPosition | null;
+  position: LocationPosition | null;
   error: GeolocationPositionError | null;
   loading: boolean;
 }
 
 export function useGeolocation(): UseGeolocationResult {
-  const [position, setPosition] = useState<GeolocationPosition | null>(null);
+  const [position, setPosition] = useState<LocationPosition | null>(null);
   const [error, setError] = useState<GeolocationPositionError | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   
@@ -71,14 +80,14 @@ export function useGeolocation(): UseGeolocationResult {
 
     // Get initial position
     navigator.geolocation.getCurrentPosition(
-      handleSuccess as PositionCallback,
+      handleSuccess,
       handleError,
       options
     );
 
     // Set up watch position for real-time updates
     watchIdRef.current = navigator.geolocation.watchPosition(
-      handleSuccess as PositionCallback,
+      handleSuccess,
       handleError,
       options
     );

@@ -5,14 +5,19 @@ import { toast } from 'sonner';
 import { Bell, Volume2, Vibrate, Trash2, LogOut, Info } from 'lucide-react';
 import Layout from '../components/Layout';
 import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
 import { requestNotificationPermission } from '../utils/notifications';
+import { useAuth } from '../hooks/useAuth';
 
 const Settings = () => {
   const [settings, setSettings] = useState({
     notifications: true,
     sound: true,
-    vibration: true
+    vibration: true,
+    publicProfile: true
   });
+  
+  const { signOut } = useAuth();
   
   const updateSetting = (key: keyof typeof settings, value: boolean) => {
     setSettings(prev => ({ ...prev, [key]: value }));
@@ -20,7 +25,8 @@ const Settings = () => {
     const messages = {
       notifications: `Notificaciones ${value ? 'activadas' : 'desactivadas'}`,
       sound: `Sonido ${value ? 'activado' : 'desactivado'}`,
-      vibration: `Vibración ${value ? 'activada' : 'desactivada'}`
+      vibration: `Vibración ${value ? 'activada' : 'desactivada'}`,
+      publicProfile: `Perfil ${value ? 'público' : 'privado'}`
     };
     
     toast.success(messages[key]);
@@ -44,12 +50,13 @@ const Settings = () => {
   };
   
   const handleLogout = () => {
-    toast.info('Cerrar sesión (No implementado)');
+    signOut();
+    toast.info('Sesión cerrada correctamente');
   };
   
   return (
     <Layout>
-      <div className="space-y-8">
+      <div className="space-y-8 pb-20">
         <motion.h1 
           className="text-2xl font-semibold"
           initial={{ opacity: 0, y: -20 }}
@@ -110,6 +117,20 @@ const Settings = () => {
                   onCheckedChange={(checked) => updateSetting('vibration', checked)}
                 />
               </div>
+              
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3">
+                  <Bell className="size-5 text-primary" />
+                  <div>
+                    <p className="font-medium">Perfil Público</p>
+                    <p className="text-sm text-muted-foreground">Permitir que otros vean tus sentimientos</p>
+                  </div>
+                </div>
+                <Switch 
+                  checked={settings.publicProfile}
+                  onCheckedChange={(checked) => updateSetting('publicProfile', checked)}
+                />
+              </div>
             </div>
           </div>
           
@@ -139,6 +160,15 @@ const Settings = () => {
                 </div>
               </button>
             </div>
+          </div>
+          
+          <div className="fixed bottom-28 right-4 md:relative md:bottom-auto md:right-auto">
+            <Button 
+              onClick={handleLogout}
+              className="bg-alarm hover:bg-alarm/90 shadow-lg rounded-full px-6 md:hidden"
+            >
+              <LogOut className="size-4 mr-2" /> Cerrar Sesión
+            </Button>
           </div>
           
           <div className="space-y-4">

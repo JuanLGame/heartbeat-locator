@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, User, Settings, Bell } from 'lucide-react';
+import { Home, User, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 export const Navbar: React.FC = () => {
@@ -35,7 +35,7 @@ export const Navbar: React.FC = () => {
           </>
         ) : (
           <NavLink to="/auth" active={isActive('/auth')}>
-            <Bell size={24} />
+            <LogOut size={24} />
           </NavLink>
         )}
       </motion.div>

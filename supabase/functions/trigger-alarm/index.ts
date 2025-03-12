@@ -76,12 +76,23 @@ serve(async (req) => {
       .eq('to_user_id', fromUserId)
       .single();
     
+    const isMatch = !!mutualData;
+    
+    // Get user profiles for notification
+    const { data: fromUserData } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', fromUserId)
+      .single();
+    
+    const fromUserName = fromUserData?.name || 'Alguien';
+    
     // Create notification for the recipient
     const { data: notificationData, error: notificationError } = await supabase
       .from('notifications')
       .insert({
-        type: mutualData ? 'match' : 'alarm',
-        message: mutualData ? '¡Tienes un match!' : 'Alguien ha activado tu alarma',
+        type: isMatch ? 'match' : 'alarm',
+        message: isMatch ? '¡Tienes un match!' : 'Alguien ha expresado sus sentimientos por ti',
         from_user_id: fromUserId,
         to_user_id: toUserId,
         read: false
@@ -94,8 +105,9 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        isMatch: !!mutualData,
-        notification: notificationData
+        isMatch,
+        notification: notificationData,
+        fromUser: fromUserName
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

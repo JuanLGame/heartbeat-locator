@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -8,6 +9,7 @@ import NearbyUsers from '../components/NearbyUsers';
 import useGeolocation from '../hooks/useGeolocation';
 import useNearbyUsers from '../hooks/useNearbyUsers';
 import { notifyAlarmTriggered, requestNotificationPermission } from '../utils/notifications';
+import { useAuth } from '../hooks/useAuth';
 
 const Index = () => {
   // State
@@ -22,6 +24,7 @@ const Index = () => {
     latitude: position?.latitude || null,
     longitude: position?.longitude || null,
   });
+  const { user } = useAuth();
   
   // Request notification permission on first load
   useEffect(() => {
@@ -30,6 +33,11 @@ const Index = () => {
   
   // Handle alarm toggle
   const handleAlarmToggle = () => {
+    if (!user) {
+      toast.error("Debes iniciar sesión para usar Love Alarm");
+      return;
+    }
+    
     // Toggle alarm state
     setAlarmActive(!alarmActive);
     
@@ -37,8 +45,6 @@ const Index = () => {
       toast.success('Love Alarm activada');
     } else {
       toast.info('Love Alarm desactivada');
-      // Clear selected users when turning off alarm
-      setSelectedUsers([]);
     }
   };
   
@@ -48,7 +54,7 @@ const Index = () => {
     toast.info(`Modo ${!visibleMode ? 'visible' : 'oculto'} activado`);
   };
   
-  // Handle user selection
+  // Handle user selection (mark as liked)
   const handleUserSelect = (userId: string) => {
     if (!alarmActive) {
       toast.error('Activa tu Love Alarm primero');
@@ -56,32 +62,18 @@ const Index = () => {
     }
     
     setSelectedUsers(prev => {
-      // If user is already selected, remove them
+      // Check if user is already selected
       if (prev.includes(userId)) {
-        return prev.filter(id => id !== userId);
+        return prev;
       }
-      // Otherwise add them
+      // Add to selected users
       return [...prev, userId];
     });
-    
-    // Simulate the other user also selecting current user (50% chance)
-    const otherUserSelectsBack = Math.random() > 0.5;
-    
-    if (otherUserSelectsBack) {
-      // Add to matched users with a delay to simulate processing
-      setTimeout(() => {
-        const selectedUser = users.find(u => u.id === userId);
-        if (selectedUser) {
-          setMatchedUsers(prev => [...prev, userId]);
-          notifyAlarmTriggered(selectedUser.name, true);
-        }
-      }, 1500);
-    }
   };
   
   return (
     <Layout>
-      <div className="space-y-10">
+      <div className="space-y-10 pb-20">
         <motion.div 
           className="flex flex-col items-center justify-center py-4"
           initial={{ opacity: 0, y: 20 }}

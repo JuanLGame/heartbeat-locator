@@ -3,6 +3,7 @@ import { useState, useEffect, createContext, useContext } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface AuthState {
   session: Session | null;
@@ -45,20 +46,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (!error) navigate('/');
-    return { error };
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (!error) {
+        toast.success("Inicio de sesión exitoso");
+        navigate('/');
+      }
+      return { error };
+    } catch (err) {
+      console.error("Sign in error:", err);
+      return { error: err };
+    }
   };
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (!error) navigate('/');
-    return { error };
+    try {
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (!error) {
+        toast.success("Cuenta creada exitosamente");
+        navigate('/');
+      }
+      return { error };
+    } catch (err) {
+      console.error("Sign up error:", err);
+      return { error: err };
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    navigate('/auth');
+    try {
+      await supabase.auth.signOut();
+      toast.info("Sesión cerrada");
+      navigate('/auth');
+    } catch (err) {
+      console.error("Sign out error:", err);
+      toast.error("Error al cerrar sesión");
+    }
   };
 
   return (

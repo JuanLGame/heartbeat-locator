@@ -32,7 +32,7 @@ export const NearbyUsers: React.FC<NearbyUsersProps> = ({
       >
         <p className="text-muted-foreground">No hay nadie cerca</p>
         <p className="text-sm text-muted-foreground mt-2">
-          Muévase para encontrar personas
+          Muévese para encontrar personas
         </p>
       </motion.div>
     );

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { toast } from 'sonner';
 import { Notification } from '../types/types';
+import { DatabaseNotification, isDbNotification } from '../types/supabase-types';
 import { playSound } from '../utils/sound';
 import { useAuth } from './useAuth';
 
@@ -31,8 +32,18 @@ export const useRealTimeNotifications = () => {
       if (error) {
         console.error('Error fetching notifications:', error);
         toast.error('Error al cargar notificaciones');
-      } else {
-        setNotifications(data as Notification[]);
+      } else if (data) {
+        // Map database notifications to application notifications
+        const appNotifications: Notification[] = data.map((dbNotification: DatabaseNotification) => ({
+          id: dbNotification.id,
+          type: dbNotification.type as 'alarm' | 'match' | 'system',
+          message: dbNotification.message,
+          fromUserId: dbNotification.from_user_id || undefined,
+          read: dbNotification.read,
+          createdAt: new Date(dbNotification.created_at)
+        }));
+        
+        setNotifications(appNotifications);
       }
       
       setLoading(false);
@@ -52,24 +63,36 @@ export const useRealTimeNotifications = () => {
           filter: `to_user_id=eq.${user.id}`
         },
         (payload) => {
-          const newNotification = payload.new as Notification;
-          
-          // Update state
-          setNotifications(prev => [newNotification, ...prev]);
-          
-          // Show toast and play sound based on notification type
-          switch (newNotification.type) {
-            case 'match':
-              toast.success('¡Tienes un match!');
-              playSound('MATCH');
-              break;
-            case 'alarm':
-              toast.info('Alguien ha activado tu alarma');
-              playSound('ALARM');
-              break;
-            default:
-              toast.info(newNotification.message);
-              playSound('NOTIFICATION');
+          if (payload.new && isDbNotification(payload.new)) {
+            const dbNotification = payload.new as DatabaseNotification;
+            
+            // Convert to application notification type
+            const newNotification: Notification = {
+              id: dbNotification.id,
+              type: dbNotification.type as 'alarm' | 'match' | 'system',
+              message: dbNotification.message,
+              fromUserId: dbNotification.from_user_id || undefined,
+              read: dbNotification.read,
+              createdAt: new Date(dbNotification.created_at)
+            };
+            
+            // Update state
+            setNotifications(prev => [newNotification, ...prev]);
+            
+            // Show toast and play sound based on notification type
+            switch (newNotification.type) {
+              case 'match':
+                toast.success('¡Tienes un match!');
+                playSound('MATCH');
+                break;
+              case 'alarm':
+                toast.info('Alguien ha activado tu alarma');
+                playSound('ALARM');
+                break;
+              default:
+                toast.info(newNotification.message);
+                playSound('NOTIFICATION');
+            }
           }
         }
       )
@@ -100,10 +123,12 @@ export const useRealTimeNotifications = () => {
   };
   
   const markAllAsRead = async () => {
+    if (!user) return false;
+    
     const { error } = await supabase
       .from('notifications')
       .update({ read: true })
-      .eq('to_user_id', user?.id)
+      .eq('to_user_id', user.id)
       .eq('read', false);
     
     if (error) {

@@ -33,7 +33,7 @@ export function useGeolocation(): UseGeolocationResult {
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      toast.error('La geolocalización no está disponible en este dispositivo');
+      toast.error('Geolocation is not available on this device');
       setLoading(false);
       return;
     }
@@ -57,16 +57,16 @@ export function useGeolocation(): UseGeolocationResult {
       
       switch(error.code) {
         case error.PERMISSION_DENIED:
-          toast.error('Por favor permita el acceso a su ubicación para usar esta aplicación');
+          toast.error('Please allow access to your location to use this application');
           break;
         case error.POSITION_UNAVAILABLE:
-          toast.error('La información de ubicación no está disponible');
+          toast.error('Location information is unavailable');
           break;
         case error.TIMEOUT:
-          toast.error('Se agotó el tiempo de espera al obtener la ubicación');
+          toast.error('Location request timed out');
           break;
         default:
-          toast.error('Ocurrió un error desconocido al obtener la ubicación');
+          toast.error('An unknown error occurred while getting location');
           break;
       }
     };
